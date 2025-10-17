@@ -5,4 +5,5 @@ polars
 pyarrow
 pandas
 kagglehub
-
+datasets
+polars
