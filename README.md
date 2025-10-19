@@ -10,11 +10,15 @@ python3 download_dataset.py
 
 ## URL for the dataset
 ```bash
-/home/mstasky/.cache/kagglehub/datasets/kanakbaghel/hospital-management-dataset/versions/1
+/home/username/.cache/kagglehub/datasets/kanakbaghel/hospital-management-dataset/versions/1
 ```
 
+## Convert csv file to datarepo supported data type parquet
+```bash
+python3 csv_to_datarepo.py
+```
 ## Create the hospital catalog
-```python
+```bash
 python3 hospital_catalog.py
 
 
