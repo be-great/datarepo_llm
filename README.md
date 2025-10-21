@@ -24,9 +24,9 @@ python3 csv_to_datarepo.py
 python3 bigdata_processing.py
 
 ```
-## 3- visualize the step
+## 3- visualize the data by seeing the api
 ```bash
-python3 visualize.py
+uvicorn hospital_api:app --reload --port 8000
 ```
 ## Create the hospital catalog
 ```bash
@@ -68,4 +68,4 @@ banana = [0.2, 0.9, 0.9]
 ```
 
 ## TODO
-put all the data 
+put all the data in api to vis
