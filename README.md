@@ -13,13 +13,15 @@ python3 download_dataset.py
 /home/username/.cache/kagglehub/datasets/kanakbaghel/hospital-management-dataset/versions/1
 ```
 
-## 1- Convert csv file to datarepo supported data type parquet
+## 1- Convert any csv file in a folder to datarepo supported data type parquet
 ```bash
 python3 csv_to_datarepo.py
 ```
 
 ## 2- BigData processing
-
+What is that mean it mean 
+- remove whitespaces, lowercase, remove duiplication.
+- create one joined dataset for all csv file if there is connection and 
 ```bash
 python3 bigdata_processing.py
 
@@ -50,10 +52,13 @@ python3 -m http.server 5000
 
 
 ## Notes 
-
+### general project flow
 ![project flow](imgs/flow.png)
 
-
+### coding flow
+1- convert csv files to datarepo and  bigdata storage format => *Parquet*
+2- mapreduce the data
+3- ....
 ### Knowledge base Constructure
  It's creating new data that capture the words similarities by numbers and store it as database vector.Example
  ```bash
@@ -66,6 +71,8 @@ banana = [0.2, 0.9, 0.9]
  “cat” → [0.2, 0.8, 0.1, …]
  “kitty” → [0.21, 0.79, 0.09, …]
 ```
+
+
 
 ## TODO
 put all the data in api to vis
