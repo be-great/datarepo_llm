@@ -21,8 +21,12 @@ python3 csv_to_datarepo.py
 ## 2- BigData processing
 
 ```bash
-
 python3 bigdata_processing.py
+
+```
+## 3- visualize the step
+```bash
+python3 visualize.py
 ```
 ## Create the hospital catalog
 ```bash
@@ -59,8 +63,9 @@ food_describe_fruit : red= 0.9 , round= 0.8 , sweet=0.7
 apple = [0.9, 0.8, 0.7]
 banana = [0.2, 0.9, 0.9]
 2)
-🧠 “cat” → [0.2, 0.8, 0.1, …]
-🧠 “kitty” → [0.21, 0.79, 0.09, …]
-
+ “cat” → [0.2, 0.8, 0.1, …]
+ “kitty” → [0.21, 0.79, 0.09, …]
 ```
 
+## TODO
+put all the data 

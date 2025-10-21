@@ -7,3 +7,7 @@ pandas
 kagglehub
 datasets
 polars
+pyspark
+fastapi
+uvicorn
+pyarrow
