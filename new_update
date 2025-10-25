@@ -1,74 +1,145 @@
 -- =========================================================
--- HOSPITAL DATA PIPELINE USING PIG MAPREDUCE
+-- HOSPITAL DATA PIPELINE (PIG → MapReduce)
+-- Uses your exact CSV columns (first_name/last_name, etc.)
 -- =========================================================
 
--- 1️⃣ Tell Pig to run in MapReduce mode (not local)
 SET default_parallel 4;
-SET mapreduce.job.queuename default;
 
--- 2️⃣ Load data from HDFS (each LOAD = a Mapper stage)
+-- ========== LOAD ==========
 patients = LOAD '/hospital/input/patients.csv'
-    USING PigStorage(',')
-    AS (patient_id:int, name:chararray, age:int, gender:chararray);
+  USING PigStorage(',')
+  AS (patient_id:chararray, first_name:chararray, last_name:chararray,
+      gender:chararray, date_of_birth:chararray, contact_number:chararray,
+      address:chararray, registration_date:chararray,
+      insurance_provider:chararray, insurance_number:chararray, email:chararray);
 
 doctors = LOAD '/hospital/input/doctors.csv'
-    USING PigStorage(',')
-    AS (doctor_id:int, doctor_name:chararray, specialty:chararray);
+  USING PigStorage(',')
+  AS (doctor_id:chararray, first_name:chararray, last_name:chararray,
+      specialization:chararray, phone_number:chararray,
+      years_experience:int, hospital_branch:chararray, email:chararray);
 
 appointments = LOAD '/hospital/input/appointments.csv'
-    USING PigStorage(',')
-    AS (appointment_id:int, patient_id:int, doctor_id:int, date:chararray);
+  USING PigStorage(',')
+  AS (appointment_id:chararray, patient_id:chararray, doctor_id:chararray,
+      appointment_date:chararray, appointment_time:chararray,
+      reason_for_visit:chararray, status:chararray);
 
 treatments = LOAD '/hospital/input/treatments.csv'
-    USING PigStorage(',')
-    AS (treatment_id:int, appointment_id:int, description:chararray, cost:double);
+  USING PigStorage(',')
+  AS (treatment_id:chararray, appointment_id:chararray, treatment_type:chararray,
+      description:chararray, cost:double, treatment_date:chararray);
 
 billing = LOAD '/hospital/input/billing.csv'
-    USING PigStorage(',')
-    AS (bill_id:int, patient_id:int, treatment_id:int, amount:double);
+  USING PigStorage(',')
+  AS (bill_id:chararray, patient_id:chararray, treatment_id:chararray,
+      bill_date:chararray, amount:double, payment_method:chararray,
+      payment_status:chararray);
 
--- 3️⃣ Clean text data (Mapper transformation)
-patients_clean = FOREACH patients GENERATE
-    patient_id,
-    LOWER(TRIM(name)) AS name,
-    age,
-    LOWER(TRIM(gender)) AS gender;
+-- ========== (Optional) drop header rows if present ==========
+patients_h = FILTER patients BY patient_id != 'patient_id';
+doctors_h  = FILTER doctors  BY doctor_id  != 'doctor_id';
+appointments_h = FILTER appointments BY appointment_id != 'appointment_id';
+treatments_h   = FILTER treatments   BY treatment_id   != 'treatment_id';
+billing_h      = FILTER billing      BY bill_id        != 'bill_id';
 
-doctors_clean = FOREACH doctors GENERATE
-    doctor_id,
-    LOWER(TRIM(doctor_name)) AS doctor_name,
-    LOWER(TRIM(specialty)) AS specialty;
+-- ========== CLEAN (lower/trim for text fields we output/join) ==========
+patients_c = FOREACH patients_h GENERATE
+  patient_id,
+  LOWER(TRIM(first_name)) AS p_first_name,
+  LOWER(TRIM(last_name))  AS p_last_name,
+  LOWER(TRIM(gender))     AS gender,
+  date_of_birth, contact_number,
+  LOWER(TRIM(address))    AS address,
+  registration_date, LOWER(TRIM(insurance_provider)) AS insurance_provider,
+  insurance_number, LOWER(TRIM(email)) AS p_email;
 
--- 4️⃣ Joins — each JOIN automatically triggers a MapReduce phase
-app_pat = JOIN appointments BY patient_id, patients_clean BY patient_id;
-app_doc = JOIN app_pat BY appointments::doctor_id, doctors_clean BY doctor_id;
-app_treat = JOIN app_doc BY appointments::appointment_id, treatments BY appointment_id;
-final_join = JOIN app_treat BY treatments::treatment_id, billing BY treatment_id;
+doctors_c = FOREACH doctors_h GENERATE
+  doctor_id,
+  LOWER(TRIM(first_name)) AS d_first_name,
+  LOWER(TRIM(last_name))  AS d_last_name,
+  LOWER(TRIM(specialization)) AS specialization,
+  phone_number, years_experience,
+  LOWER(TRIM(hospital_branch)) AS hospital_branch,
+  LOWER(TRIM(email)) AS d_email;
 
--- 5️⃣ Select relevant fields
+appts_c = FOREACH appointments_h GENERATE
+  appointment_id, patient_id, doctor_id,
+  appointment_date, appointment_time,
+  LOWER(TRIM(reason_for_visit)) AS reason_for_visit,
+  LOWER(TRIM(status))           AS status;
+
+treats_c = FOREACH treatments_h GENERATE
+  treatment_id, appointment_id,
+  LOWER(TRIM(treatment_type)) AS treatment_type,
+  LOWER(TRIM(description))    AS description,
+  cost, treatment_date;
+
+bill_c = FOREACH billing_h GENERATE
+  bill_id, patient_id, treatment_id,
+  bill_date, amount,
+  LOWER(TRIM(payment_method)) AS payment_method,
+  LOWER(TRIM(payment_status)) AS payment_status;
+
+-- ========== JOINS (keys) ==========
+-- appointments ↔ patients via patient_id
+ap_pat = JOIN appts_c BY patient_id, patients_c BY patient_id;
+
+-- add doctors via doctor_id
+ap_pat_doc = JOIN ap_pat BY appts_c::doctor_id, doctors_c BY doctor_id;
+
+-- add treatments via appointment_id
+ap_pat_doc_tr = JOIN ap_pat_doc BY appts_c::appointment_id, treats_c BY appointment_id;
+
+-- add billing via (patient_id, treatment_id)
+final_join = JOIN ap_pat_doc_tr
+               BY (patients_c::patient_id, treats_c::treatment_id),
+             bill_c
+               BY (patient_id,            treatment_id);
+
+-- ========== SELECT / RENAME ==========
 final_sel = FOREACH final_join GENERATE
-    patients_clean::patient_id AS patient_id,
-    patients_clean::name AS patient_name,
-    doctors_clean::doctor_name AS doctor,
-    doctors_clean::specialty AS specialty,
-    treatments::description AS treatment,
-    billing::amount AS amount,
-    appointments::date AS appointment_date;
+  patients_c::patient_id     AS patient_id,
+  patients_c::p_first_name   AS patient_first_name,
+  patients_c::p_last_name    AS patient_last_name,
+  patients_c::gender         AS gender,
+  patients_c::date_of_birth  AS date_of_birth,
+  doctors_c::doctor_id       AS doctor_id,
+  doctors_c::d_first_name    AS doctor_first_name,
+  doctors_c::d_last_name     AS doctor_last_name,
+  doctors_c::specialization  AS specialization,
+  appts_c::appointment_id    AS appointment_id,
+  appts_c::appointment_date  AS appointment_date,
+  appts_c::appointment_time  AS appointment_time,
+  appts_c::reason_for_visit  AS reason_for_visit,
+  appts_c::status            AS appointment_status,
+  treats_c::treatment_id     AS treatment_id,
+  treats_c::treatment_type   AS treatment_type,
+  treats_c::description      AS treatment_description,
+  treats_c::cost             AS treatment_cost,
+  bill_c::bill_id            AS bill_id,
+  bill_c::bill_date          AS bill_date,
+  bill_c::amount             AS bill_amount,
+  bill_c::payment_method     AS payment_method,
+  bill_c::payment_status     AS payment_status;
 
--- 6️⃣ Remove duplicates (another MapReduce job)
+-- de-dup
 final_clean = DISTINCT final_sel;
 
--- 7️⃣ Optional aggregation (MapReduce GROUP)
-grouped_by_doctor = GROUP final_clean BY doctor;
-summary = FOREACH grouped_by_doctor GENERATE
-    group AS doctor,
-    COUNT(final_clean) AS num_patients,
-    AVG(final_clean.amount) AS avg_bill;
+-- ========== Example aggregation (per doctor) ==========
+grp_doc = GROUP final_clean BY (doctor_id, doctor_first_name, doctor_last_name, specialization);
+summary_by_doctor = FOREACH grp_doc GENERATE
+  group.doctor_id       AS doctor_id,
+  group.doctor_first_name AS doctor_first_name,
+  group.doctor_last_name  AS doctor_last_name,
+  group.specialization    AS specialization,
+  COUNT(final_clean)      AS total_records,
+  AVG(final_clean.bill_amount)      AS avg_bill_amount,
+  AVG(final_clean.treatment_cost)   AS avg_treatment_cost;
 
--- 8️⃣ Store the result back to HDFS (final MapReduce job)
-STORE summary INTO '/hospital/output_summary'
-    USING PigStorage(',');
-
+-- ========== STORE outputs (triggers MapReduce) ==========
+STORE final_clean       INTO '/hospital/output/curated'            USING PigStorage(',');
+STORE summary_by_doctor INTO '/hospital/output/summary_by_doctor'  USING PigStorage(',');
 
 
 ==============================
