@@ -1,0 +1,74 @@
+-- =========================================================
+-- HOSPITAL DATA PIPELINE USING PIG MAPREDUCE
+-- =========================================================
+
+-- 1️⃣ Tell Pig to run in MapReduce mode (not local)
+SET default_parallel 4;
+SET mapreduce.job.queuename default;
+
+-- 2️⃣ Load data from HDFS (each LOAD = a Mapper stage)
+patients = LOAD '/hospital/input/patients.csv'
+    USING PigStorage(',')
+    AS (patient_id:int, name:chararray, age:int, gender:chararray);
+
+doctors = LOAD '/hospital/input/doctors.csv'
+    USING PigStorage(',')
+    AS (doctor_id:int, doctor_name:chararray, specialty:chararray);
+
+appointments = LOAD '/hospital/input/appointments.csv'
+    USING PigStorage(',')
+    AS (appointment_id:int, patient_id:int, doctor_id:int, date:chararray);
+
+treatments = LOAD '/hospital/input/treatments.csv'
+    USING PigStorage(',')
+    AS (treatment_id:int, appointment_id:int, description:chararray, cost:double);
+
+billing = LOAD '/hospital/input/billing.csv'
+    USING PigStorage(',')
+    AS (bill_id:int, patient_id:int, treatment_id:int, amount:double);
+
+-- 3️⃣ Clean text data (Mapper transformation)
+patients_clean = FOREACH patients GENERATE
+    patient_id,
+    LOWER(TRIM(name)) AS name,
+    age,
+    LOWER(TRIM(gender)) AS gender;
+
+doctors_clean = FOREACH doctors GENERATE
+    doctor_id,
+    LOWER(TRIM(doctor_name)) AS doctor_name,
+    LOWER(TRIM(specialty)) AS specialty;
+
+-- 4️⃣ Joins — each JOIN automatically triggers a MapReduce phase
+app_pat = JOIN appointments BY patient_id, patients_clean BY patient_id;
+app_doc = JOIN app_pat BY appointments::doctor_id, doctors_clean BY doctor_id;
+app_treat = JOIN app_doc BY appointments::appointment_id, treatments BY appointment_id;
+final_join = JOIN app_treat BY treatments::treatment_id, billing BY treatment_id;
+
+-- 5️⃣ Select relevant fields
+final_sel = FOREACH final_join GENERATE
+    patients_clean::patient_id AS patient_id,
+    patients_clean::name AS patient_name,
+    doctors_clean::doctor_name AS doctor,
+    doctors_clean::specialty AS specialty,
+    treatments::description AS treatment,
+    billing::amount AS amount,
+    appointments::date AS appointment_date;
+
+-- 6️⃣ Remove duplicates (another MapReduce job)
+final_clean = DISTINCT final_sel;
+
+-- 7️⃣ Optional aggregation (MapReduce GROUP)
+grouped_by_doctor = GROUP final_clean BY doctor;
+summary = FOREACH grouped_by_doctor GENERATE
+    group AS doctor,
+    COUNT(final_clean) AS num_patients,
+    AVG(final_clean.amount) AS avg_bill;
+
+-- 8️⃣ Store the result back to HDFS (final MapReduce job)
+STORE summary INTO '/hospital/output_summary'
+    USING PigStorage(',');
+
+-- =========================================================
+-- End of Script
+-- =========================================================
