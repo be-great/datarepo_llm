@@ -69,6 +69,12 @@ summary = FOREACH grouped_by_doctor GENERATE
 STORE summary INTO '/hospital/output_summary'
     USING PigStorage(',');
 
--- =========================================================
--- End of Script
--- =========================================================
+
+
+==============================
+
+1) patient: patient_id	first_name	last_name	gender	date_of_birth	contact_number	address	registration_date	insurance_provider	insurance_number	email
+2) appointments : appointment_id	patient_id	doctor_id	appointment_date	appointment_time	reason_for_visit	status
+3) billing : bill_id	patient_id	treatment_id	bill_date	amount	payment_method	payment_status
+4) doctor : doctor_id	first_name	last_name	specialization	phone_number	years_experience	hospital_branch	email
+5) treatment: treatment_id	appointment_id	treatment_type	description	cost	treatment_date
