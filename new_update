@@ -36,7 +36,7 @@ billing = LOAD '/hospital/input/billing.csv'
       bill_date:chararray, amount:double, payment_method:chararray,
       payment_status:chararray);
 
--- ========== (Optional) drop header rows if present ==========
+-- ==========  drop header that have the same id rows if present ==========
 patients_h = FILTER patients BY patient_id != 'patient_id';
 doctors_h  = FILTER doctors  BY doctor_id  != 'doctor_id';
 appointments_h = FILTER appointments BY appointment_id != 'appointment_id';
