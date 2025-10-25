@@ -43,7 +43,7 @@ appointments_h = FILTER appointments BY appointment_id != 'appointment_id';
 treatments_h   = FILTER treatments   BY treatment_id   != 'treatment_id';
 billing_h      = FILTER billing      BY bill_id        != 'bill_id';
 
--- ========== CLEAN (lower/trim for text fields we output/join) ==========
+-- ========== CLEAN (removing spaces and converting to lowercase) ==========
 patients_c = FOREACH patients_h GENERATE
   patient_id,
   LOWER(TRIM(first_name)) AS p_first_name,
