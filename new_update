@@ -123,7 +123,7 @@ final_sel = FOREACH final_join GENERATE
   bill_c::payment_method     AS payment_method,
   bill_c::payment_status     AS payment_status;
 
--- de-dup
+-- Remove duplication
 final_clean = DISTINCT final_sel;
 
 -- ========== Example aggregation (per doctor) ==========
