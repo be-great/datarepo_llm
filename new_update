@@ -6,31 +6,31 @@
 SET default_parallel 4;
 
 -- ========== LOAD ==========
-patients = LOAD '/hospital/input/patients.csv'
+patients = LOAD '/data/data_csv/patients.csv'
   USING PigStorage(',')
   AS (patient_id:chararray, first_name:chararray, last_name:chararray,
       gender:chararray, date_of_birth:chararray, contact_number:chararray,
       address:chararray, registration_date:chararray,
       insurance_provider:chararray, insurance_number:chararray, email:chararray);
 
-doctors = LOAD '/hospital/input/doctors.csv'
+doctors = LOAD '/data/data_csv/doctors.csv'
   USING PigStorage(',')
   AS (doctor_id:chararray, first_name:chararray, last_name:chararray,
       specialization:chararray, phone_number:chararray,
       years_experience:int, hospital_branch:chararray, email:chararray);
 
-appointments = LOAD '/hospital/input/appointments.csv'
+appointments = LOAD '/data/data_csv/appointments.csv'
   USING PigStorage(',')
   AS (appointment_id:chararray, patient_id:chararray, doctor_id:chararray,
       appointment_date:chararray, appointment_time:chararray,
       reason_for_visit:chararray, status:chararray);
 
-treatments = LOAD '/hospital/input/treatments.csv'
+treatments = LOAD '/data/data_csv/treatments.csv'
   USING PigStorage(',')
   AS (treatment_id:chararray, appointment_id:chararray, treatment_type:chararray,
       description:chararray, cost:double, treatment_date:chararray);
 
-billing = LOAD '/hospital/input/billing.csv'
+billing = LOAD '/data/data_csv/billing.csv'
   USING PigStorage(',')
   AS (bill_id:chararray, patient_id:chararray, treatment_id:chararray,
       bill_date:chararray, amount:double, payment_method:chararray,
@@ -138,8 +138,8 @@ summary_by_doctor = FOREACH grp_doc GENERATE
   AVG(final_clean.treatment_cost)   AS avg_treatment_cost;
 
 -- ========== STORE outputs (triggers MapReduce) ==========
-STORE final_clean       INTO '/hospital/output/curated'            USING PigStorage(',');
-STORE summary_by_doctor INTO '/hospital/output/summary_by_doctor'  USING PigStorage(',');
+STORE final_clean       INTO '/data/output/curated'            USING PigStorage(',');
+STORE summary_by_doctor INTO '/data/output/summary_by_doctor'  USING PigStorage(',');
 
 
 ==============================
